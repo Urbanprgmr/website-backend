@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website CMS</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .editor-section {
+      margin-bottom: 20px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Website CMS</h1>
+  <div id="editor"></div>
+
+  <script>
+    const REPO = 'your-username/your-repo'; // Replace with your GitHub repo
+    const BRANCH = 'main'; // Replace with your branch name
+    const TOKEN = 'your-github-token'; // Replace with your GitHub token
+    const DATA_FILE = 'data.json'; // Path to your JSON file
+
+    // Fetch content from GitHub
+    async function fetchContent() {
+      const url = `https://api.github.com/repos/${REPO}/contents/${DATA_FILE}?ref=${BRANCH}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          Accept: 'application/vnd.github.v3.raw',
+        },
+      });
+      const data = await response.json();
+      return data;
+    }
+
+    // Update content on GitHub
+    async function updateContent(content) {
+      const url = `https://api.github.com/repos/${REPO}/contents/${DATA_FILE}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Update content via CMS',
+          content: btoa(JSON.stringify(content, null, 2)), // Encode content to base64
+          sha: await getFileSHA(),
+          branch: BRANCH,
+        }),
+      });
+      return response.json();
+    }
+
+    // Get the SHA of the current file
+    async function getFileSHA() {
+      const url = `https://api.github.com/repos/${REPO}/contents/${DATA_FILE}?ref=${BRANCH}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+      const data = await response.json();
+      return data.sha;
+    }
+
+    // Render the editor
+    async function renderEditor() {
+      const content = await fetchContent();
+      const editor = document.getElementById('editor');
+      editor.innerHTML = `
+        <div class="editor-section">
+          <h2>Profile</h2>
+          <input id="profile-name" value="${content.profile.name}" placeholder="Name">
+          <textarea id="profile-bio" placeholder="Bio">${content.profile.bio}</textarea>
+          <input id="profile-image" value="${content.profile.image}" placeholder="Image URL">
+          <button onclick="updateProfile()">Update Profile</button>
+        </div>
+        <div class="editor-section">
+          <h2>Projects</h2>
+          ${content.projects.map((project, index) => `
+            <div>
+              <input value="${project.title}" placeholder="Title">
+              <textarea placeholder="Description">${project.description}</textarea>
+              <input value="${project.image}" placeholder="Image URL">
+              <button onclick="updateProject(${index})">Update</button>
+              <button onclick="deleteProject(${index})">Delete</button>
+            </div>
+          `).join('')}
+          <button onclick="addProject()">Add Project</button>
+        </div>
+        <div class="editor-section">
+          <h2>Blog Posts</h2>
+          ${content.blogPosts.map((post, index) => `
+            <div>
+              <input value="${post.title}" placeholder="Title">
+              <textarea placeholder="Content">${post.content}</textarea>
+              <input value="${post.image}" placeholder="Image URL">
+              <button onclick="updateBlogPost(${index})">Update</button>
+              <button onclick="deleteBlogPost(${index})">Delete</button>
+            </div>
+          `).join('')}
+          <button onclick="addBlogPost()">Add Blog Post</button>
+        </div>
+      `;
+    }
+
+    // Update profile
+    async function updateProfile() {
+      const content = await fetchContent();
+      content.profile.name = document.getElementById('profile-name').value;
+      content.profile.bio = document.getElementById('profile-bio').value;
+      content.profile.image = document.getElementById('profile-image').value;
+      await updateContent(content);
+      alert('Profile updated successfully!');
+      renderEditor();
+    }
+
+    // Add project
+    async function addProject() {
+      const content = await fetchContent();
+      content.projects.push({ title: '', description: '', image: '' });
+      await updateContent(content);
+      alert('Project added successfully!');
+      renderEditor();
+    }
+
+    // Update project
+    async function updateProject(index) {
+      const content = await fetchContent();
+      content.projects[index].title = document.querySelectorAll('.editor-section input')[index].value;
+      content.projects[index].description = document.querySelectorAll('.editor-section textarea')[index].value;
+      content.projects[index].image = document.querySelectorAll('.editor-section input')[index + 1].value;
+      await updateContent(content);
+      alert('Project updated successfully!');
+      renderEditor();
+    }
+
+    // Delete project
+    async function deleteProject(index) {
+      const content = await fetchContent();
+      content.projects.splice(index, 1);
+      await updateContent(content);
+      alert('Project deleted successfully!');
+      renderEditor();
+    }
+
+    // Add blog post
+    async function addBlogPost() {
+      const content = await fetchContent();
+      content.blogPosts.push({ title: '', content: '', image: '' });
+      await updateContent(content);
+      alert('Blog post added successfully!');
+      renderEditor();
+    }
+
+    // Update blog post
+    async function updateBlogPost(index) {
+      const content = await fetchContent();
+      content.blogPosts[index].title = document.querySelectorAll('.editor-section input')[index].value;
+      content.blogPosts[index].content = document.querySelectorAll('.editor-section textarea')[index].value;
+      content.blogPosts[index].image = document.querySelectorAll('.editor-section input')[index + 1].value;
+      await updateContent(content);
+      alert('Blog post updated successfully!');
+      renderEditor();
+    }
+
+    // Delete blog post
+    async function deleteBlogPost(index) {
+      const content = await fetchContent();
+      content.blogPosts.splice(index, 1);
+      await updateContent(content);
+      alert('Blog post deleted successfully!');
+      renderEditor();
+    }
+
+    // Initial render
+    renderEditor();
+  </script>
+</body>
+</html>
